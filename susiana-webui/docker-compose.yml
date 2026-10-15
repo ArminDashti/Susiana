@@ -1,5 +1,7 @@
+name: susiana
+
 services:
-  webui:
+  susiana-webui:
     build:
       context: .
       dockerfile: dockerfile
@@ -7,7 +9,14 @@ services:
     container_name: susiana-webui
     restart: "no"
     ports:
-      - "5178:80"
+      - "${SUSIANA_WEBUI_PORT:-5178}:80"
     environment:
       API_HOST: susiana-api
       API_PORT: "8080"
+    networks:
+      - app_net
+
+networks:
+  app_net:
+    name: ${DOCKER_NETWORK:-susiana-net}
+    external: true

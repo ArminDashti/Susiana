@@ -1,0 +1,12 @@
+{
+  "name": "susiana-cli",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Lifecycle CLI for susiana-api and susiana-webui (Docker mode)",
+  "bin": {
+    "susiana": "index.js"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
