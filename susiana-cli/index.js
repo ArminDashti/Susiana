@@ -2,7 +2,8 @@
 'use strict';
 
 // susiana lifecycle CLI (Docker mode) for susiana-api and susiana-webui. Built-ins only.
-// Usage: susiana <api|webui> <command> [options]
+// Usage: susiana <command> [api|webui] [options]
+// With no app selector, the command runs for both api and webui (api first).
 
 const { spawnSync } = require('node:child_process');
 const fs = require('node:fs');
@@ -27,6 +28,7 @@ const APPS = {
     healthPath: '/',
     externalNetwork: 'susiana-net',
     dataVolumes: ['susiana-pgdata'],
+    legacyContainers: ['susiana-api', 'susiana-pgsql'],
   },
   webui: {
     displayName: 'susiana-webui',
@@ -38,6 +40,7 @@ const APPS = {
     healthPath: '/',
     externalNetwork: null,
     dataVolumes: [],
+    legacyContainers: ['susiana-webui'],
   },
 };
 
@@ -97,7 +100,7 @@ function defaultConfig() {
 
 function requireInstalled() {
   const cfg = readConfig();
-  if (!cfg) fail(`${ctx.key} is not installed. Run: susiana ${ctx.key} rebuild`, 4);
+  if (!cfg) fail(`${ctx.key} is not installed. Run: susiana rebuild ${ctx.key}`, 4);
   return cfg;
 }
 
@@ -140,6 +143,27 @@ function runningContainers() {
     const [name, status] = line.split('\t');
     return { name, status };
   });
+}
+
+// Containers created before the CLI existed belong to the compose project "susiana"
+// (from the compose files' top-level `name:`), so the project-scoped calls above never see them.
+function legacyContainers() {
+  const r = spawnSync('docker', [
+    'ps', '-a', '--filter', 'label=com.docker.compose.project=susiana',
+    '--format', '{{.Names}}\t{{.Status}}',
+  ], { encoding: 'utf8' });
+  if (r.status !== 0) return [];
+  return r.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
+    const [name, status] = line.split('\t');
+    return { name, status };
+  }).filter((c) => ctx.legacyContainers.includes(c.name));
+}
+
+function removeLegacyContainers() {
+  const legacy = legacyContainers();
+  if (legacy.length === 0) return;
+  say(`Removing legacy containers: ${legacy.map((c) => c.name).join(', ')}`);
+  spawnSync('docker', ['rm', '-f', ...legacy.map((c) => c.name)], { stdio: 'inherit' });
 }
 
 function probe(port, timeoutMs = 3000) {
@@ -218,6 +242,7 @@ async function start(opts) {
     writeConfig(cfg);
   }
   await ensureExternalNetwork(opts);
+  removeLegacyContainers();
   const up = compose(['up', '-d'], cfg.port);
   if (up.status !== 0) fail('docker compose up failed.', up.status ?? 1);
   if (!(await waitForUrl(cfg.port, STARTUP_TIMEOUT_MS))) {
@@ -293,7 +318,7 @@ async function rebuild(opts) {
 
   const prior = readConfig();
   const port = prior ? prior.port : ctx.defaultPort;
-  const wasRunning = runningContainers().length > 0;
+  const wasRunning = runningContainers().length > 0 || legacyContainers().some((c) => c.status.startsWith('Up'));
 
   if (removeData === 'yes') {
     const confirmed = await confirm(
@@ -307,10 +332,12 @@ async function rebuild(opts) {
     const cfg = defaultConfig();
     const build = compose(['build', '--no-cache', '--pull'], cfg.port);
     if (build.status !== 0) fail('Build failed. Data was already removed.', build.status ?? 1);
+    removeLegacyContainers();
     writeConfig(cfg);
   } else {
     const build = compose(['build', '--no-cache', '--pull'], port);
     if (build.status !== 0) fail('Build failed; old install left untouched.', build.status ?? 1);
+    removeLegacyContainers();
     compose(['down', '--remove-orphans'], port);
     const cfg = prior ?? defaultConfig();
     cfg.version = sourceVersion();
@@ -359,34 +386,36 @@ const COMMANDS = {
 };
 
 function help() {
-  console.log(`Usage: susiana <api|webui> <command> [options]
+  console.log(`Usage: susiana <command> [api|webui] [options]
 
-Apps:
+Apps (optional; omit to run the command for both, api first):
   api     susiana-api   (default port 8200)
   webui   susiana-webui (default port 5178)
 
 Commands:
   status                              Show install, container, port and URL state
   version                             Compare installed, source and CLI versions
-  run [--port=N]                      Start the app (optionally set port first)
+  run [--port=N]                      Start the app(s) (--port needs an app selector)
   stop                                Stop containers and verify the port is free
-  port [--port=N]                     Show or set the default port (restarts if running)
+  port [--port=N]                     Show or set the default port (restarts if running; --port needs an app selector)
   update                              git pull --ff-only, then rebuild (keeps data)
-  rebuild [--remove-data=no|yes]      Rebuild the app (yes wipes data and config)
-  uninstall                           Remove the app's containers, volumes, data and config
+  rebuild [--remove-data=no|yes]      Rebuild the app(s) (yes wipes data and config)
+  uninstall                           Remove the app(s) containers, volumes, data and config
   help                                Show this message
 
 Options:
   -y, --yes                           Skip confirmation prompts
 
 Examples:
-  susiana api run
-  susiana webui port --port=5179
-  susiana api rebuild --remove-data=no -y`);
+  susiana rebuild                     Rebuild both api and webui
+  susiana run                         Start both api and webui
+  susiana rebuild api --remove-data=no -y
+  susiana port webui --port=5179`);
 }
 
-function parseOptions(args) {
+function parseArgs(args) {
   const opts = {};
+  const positionals = [];
   for (let i = 0; i < args.length; i++) {
     const arg = args[i];
     if (arg === '-y' || arg === '--yes') {
@@ -398,38 +427,62 @@ function parseOptions(args) {
       } else {
         const key = arg.slice(2);
         const next = args[i + 1];
-        if (next !== undefined && !next.startsWith('-')) {
+        if (next !== undefined && !next.startsWith('-') && !Object.hasOwn(APPS, next)) {
           opts[key] = next;
           i++;
         } else {
           opts[key] = true;
         }
       }
+    } else if (arg.startsWith('-')) {
+      fail(`Unknown option: ${arg}`, 2);
     } else {
-      fail(`Unknown input: ${arg}`, 2);
+      positionals.push(arg);
     }
   }
-  return opts;
+  return { opts, positionals };
+}
+
+// Accepts "<command> [app]" and "<app> <command>" so both orders work.
+function resolveCommandAndTargets(positionals) {
+  const [first, second, ...extra] = positionals;
+  if (extra.length > 0) fail(`Unknown input: ${extra.join(' ')}`, 2);
+  if (first !== undefined && Object.hasOwn(APPS, first)) {
+    return { command: second, targets: [first] };
+  }
+  if (second !== undefined && !Object.hasOwn(APPS, second)) {
+    fail(`Unknown app: ${second}. Use "api" or "webui".`, 2);
+  }
+  return { command: first, targets: second === undefined ? Object.keys(APPS) : [second] };
 }
 
 async function main() {
-  const [appKey, command, ...rest] = process.argv.slice(2);
-
-  if (appKey === undefined || appKey === 'help' || appKey === '--help' || appKey === '-h') {
+  const rawArgs = process.argv.slice(2);
+  if (rawArgs.length === 0 || rawArgs[0] === 'help' || rawArgs[0] === '--help' || rawArgs[0] === '-h') {
     return help();
   }
-  if (!Object.hasOwn(APPS, appKey)) {
-    help();
-    fail(`Unknown app: ${appKey}. Use "api" or "webui".`, 2);
-  }
-  ctx = makeContext(appKey);
+
+  const { opts, positionals } = parseArgs(rawArgs);
+  const { command, targets } = resolveCommandAndTargets(positionals);
 
   if (command === undefined || command === 'help') return help();
   if (!Object.hasOwn(COMMANDS, command)) {
     help();
     fail(`Unknown command: ${command}`, 2);
   }
-  return COMMANDS[command](parseOptions(rest));
+  if (command === 'port' && opts.port !== undefined && targets.length > 1) {
+    fail('--port needs an app selector: susiana port <api|webui> --port=N', 2);
+  }
+
+  let worstExitCode = 0;
+  for (const key of targets) {
+    ctx = makeContext(key);
+    if (targets.length > 1) console.log(`== ${ctx.displayName} ==`);
+    process.exitCode = undefined;
+    await COMMANDS[command](opts);
+    worstExitCode = Math.max(worstExitCode, process.exitCode ?? 0);
+  }
+  process.exitCode = worstExitCode;
 }
 
 main().catch((err) => fail(err.stack || String(err), 1));
