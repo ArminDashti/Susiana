@@ -66,7 +66,7 @@ const grid = computed(() => {
 function onRowClick(row: MarketRow) {
   if (route.meta.gridKind === 'history') return
   const symbol = row.symbol ?? row.pair
-  if (typeof symbol === 'string' && route.path.includes('/stock-market/tse')) {
+  if (typeof symbol === 'string' && route.meta.gridKind === 'tse-indexes') {
     router.push(`/stock-market/tse/stock/${symbol}`)
   }
 }

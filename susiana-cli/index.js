@@ -16,31 +16,33 @@ const readline = require('node:readline');
 const REPO_ROOT = path.resolve(__dirname, '..');
 const MAX_LOG_BYTES = 10 * 1024 * 1024;
 const STARTUP_TIMEOUT_MS = 30000;
+// Single compose stack shared by api and webui (matches top-level `name:` in both compose files).
+const COMPOSE_PROJECT = 'susiana';
 
 const APPS = {
   api: {
     displayName: 'susiana-api',
     dataName: 'SusianaApi',
     projectDir: path.join(REPO_ROOT, 'susiana-api'),
-    composeProject: 'susiana-api',
+    composeProject: COMPOSE_PROJECT,
     portEnv: 'SUSIANA_API_PORT',
     defaultPort: 8200,
     healthPath: '/',
     externalNetwork: 'susiana-net',
     dataVolumes: ['susiana-pgdata'],
-    legacyContainers: ['susiana-api', 'susiana-pgsql'],
+    services: ['susiana-api', 'susiana-pgsql'],
   },
   webui: {
     displayName: 'susiana-webui',
     dataName: 'SusianaWebui',
     projectDir: path.join(REPO_ROOT, 'susiana-webui'),
-    composeProject: 'susiana-webui',
+    composeProject: COMPOSE_PROJECT,
     portEnv: 'SUSIANA_WEBUI_PORT',
     defaultPort: 5178,
     healthPath: '/',
     externalNetwork: null,
     dataVolumes: [],
-    legacyContainers: ['susiana-webui'],
+    services: ['susiana-webui'],
   },
 };
 
@@ -133,30 +135,28 @@ function compose(args, port) {
   return result;
 }
 
-function runningContainers() {
-  const r = spawnSync('docker', [
-    'ps', '--filter', `label=com.docker.compose.project=${ctx.composeProject}`,
-    '--format', '{{.Names}}\t{{.Status}}',
-  ], { encoding: 'utf8' });
+// Lists containers with their compose project and service labels.
+function listContainers(includeStopped) {
+  const args = ['ps', ...(includeStopped ? ['-a'] : []), '--format', '{{.Names}}\t{{.Status}}\t{{.Labels}}'];
+  const r = spawnSync('docker', args, { encoding: 'utf8' });
   if (r.status !== 0) return [];
   return r.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
-    const [name, status] = line.split('\t');
-    return { name, status };
+    const [name, status, labels = ''] = line.split('\t');
+    const project = labels.match(/com\.docker\.compose\.project=([^,]+)/)?.[1] ?? null;
+    const service = labels.match(/com\.docker\.compose\.service=([^,]+)/)?.[1] ?? null;
+    return { name, status, project, service };
   });
 }
 
-// Containers created before the CLI existed belong to the compose project "susiana"
-// (from the compose files' top-level `name:`), so the project-scoped calls above never see them.
+// Running containers of this app's services inside the shared stack.
+function runningContainers() {
+  return listContainers(false).filter((c) => c.project === COMPOSE_PROJECT && ctx.services.includes(c.service));
+}
+
+// Containers of this app created under an older per-app compose project (e.g. susiana-api).
+// They hold the same container names, so they must be removed before `up` can recreate them.
 function legacyContainers() {
-  const r = spawnSync('docker', [
-    'ps', '-a', '--filter', 'label=com.docker.compose.project=susiana',
-    '--format', '{{.Names}}\t{{.Status}}',
-  ], { encoding: 'utf8' });
-  if (r.status !== 0) return [];
-  return r.stdout.split(/\r?\n/).filter(Boolean).map((line) => {
-    const [name, status] = line.split('\t');
-    return { name, status };
-  }).filter((c) => ctx.legacyContainers.includes(c.name));
+  return listContainers(true).filter((c) => ctx.services.includes(c.service) && c.project !== COMPOSE_PROJECT);
 }
 
 function removeLegacyContainers() {
@@ -326,7 +326,7 @@ async function rebuild(opts) {
       opts,
     );
     if (!confirmed) return say('Aborted.');
-    compose(['down', '-v', '--rmi', 'local', '--remove-orphans'], port);
+    compose(['down', '-v', '--rmi', 'local'], port);
     removeVolumes();
     fs.rmSync(ctx.dataRoot, { recursive: true, force: true });
     const cfg = defaultConfig();
@@ -338,7 +338,7 @@ async function rebuild(opts) {
     const build = compose(['build', '--no-cache', '--pull'], port);
     if (build.status !== 0) fail('Build failed; old install left untouched.', build.status ?? 1);
     removeLegacyContainers();
-    compose(['down', '--remove-orphans'], port);
+    compose(['down'], port);
     const cfg = prior ?? defaultConfig();
     cfg.version = sourceVersion();
     writeConfig(cfg);
@@ -367,7 +367,7 @@ async function uninstall(opts) {
   if (!confirmed) return say('Aborted.');
   const cfg = readConfig();
   if (dockerAvailable()) {
-    compose(['down', '-v', '--rmi', 'local', '--remove-orphans'], cfg ? cfg.port : ctx.defaultPort);
+    compose(['down', '-v', '--rmi', 'local'], cfg ? cfg.port : ctx.defaultPort);
     removeVolumes();
   }
   fs.rmSync(ctx.dataRoot, { recursive: true, force: true });

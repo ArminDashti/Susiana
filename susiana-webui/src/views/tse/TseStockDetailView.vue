@@ -73,7 +73,7 @@ watch(symbol, load)
 <template>
   <div class="space-y-3">
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      <RouterLink class="text-primary hover:underline" to="/stock-market/tse">← TSE list</RouterLink>
+      <RouterLink class="text-primary hover:underline" to="/stock-market/asia/iran/board">← TSE list</RouterLink>
       <span class="text-muted-foreground">·</span>
       <RouterLink
         class="text-primary hover:underline"

@@ -23,7 +23,7 @@ const apiHint = ref(import.meta.env.VITE_API_PROXY_TARGET || 'http://127.0.0.1:8
       </div>
       <div class="rounded-md border bg-card p-4">
         <p class="text-xs uppercase text-muted-foreground">Quick open</p>
-        <Button class="mt-2" size="sm" @click="$router.push('/stock-market/tse')">Open TSE grid</Button>
+        <Button class="mt-2" size="sm" @click="$router.push('/stock-market/asia/iran/board')">Open TSE grid</Button>
       </div>
     </div>
 

@@ -122,3 +122,23 @@ unverified) or skip it. This keeps confident guesses out.
 <!-- When no richer mechanism is available, append dated golden-path entries here.
      Format: ### YYYY-MM-DD — <title>  /  **Goal**, **Steps**, **Gotchas**,
      **What didn't work**. Keep secrets out — point to where they live. -->
+
+## Learned User Preferences
+
+- Keep all susiana Docker lifecycle commands under one `susiana` CLI. With no app selector a command applies to both apps (`susiana rebuild` rebuilds api then webui); an optional `api|webui` selector targets one app (`susiana rebuild api`, `susiana api rebuild`), not separate per-app aliases.
+- Name the lifecycle rebuild command `rebuild` rather than `reinstall`.
+- When asked to rebuild for local Docker, bring up the API first, then the webui.
+- Do not run destructive reinstalls that remove data (`--remove-data=yes`, `down -v`) on the API without explicit confirmation.
+
+## Learned Workspace Facts
+
+- The Docker stack is named `susiana` (top-level `name:` in both compose files, and `COMPOSE_PROJECT` in `susiana-cli/index.js`) with containers `susiana-api`, `susiana-webui`, and `susiana-pgsql`. Both apps share this one compose project; the CLI scopes status and legacy cleanup by service name and never uses `--remove-orphans`, since that would remove the other app's containers. `susiana-pgsql` is defined in `susiana-api/docker-compose.yml`.
+- The API compose file uses the external Docker network `susiana-net` (overridable via `DOCKER_NETWORK`), which must exist before `up`.
+- The lifecycle CLI lives in `susiana-cli/` at the repo root (Node built-ins only), linked globally with `npm link`; per-app config and logs live under `%LOCALAPPDATA%\SusianaApi` and `%LOCALAPPDATA%\SusianaWebui`.
+- Published ports are set by `SUSIANA_API_PORT` (default 8200) and `SUSIANA_WEBUI_PORT` (default 5178).
+- On this machine port 5178 is held by another project's `helix-webui` container, so the local webui runs on 5179.
+- The API image builds from the lowercase `susiana-api/dockerfile` through a `build:` section in `susiana-api/docker-compose.yml`.
+- Postgres data lives in the named volume `susiana-pgdata`; removing it deletes the database data.
+- The webui sidebar menu is defined in `susiana-webui/src/components/AppShell.vue`, and routes are defined in `susiana-webui/src/router/index.ts`.
+- Containers of this app under an older compose project (e.g. `susiana-api`, `susiana-webui`, or a manual `docker compose up`) are removed by `susiana-cli/index.js` (`legacyContainers`) before `up`, so the container names can be recreated under the `susiana` project.
+- The webui font is Inter: `@fontsource/inter` is imported in `susiana-webui/src/assets/index.css`, and `font-sans` maps to Inter in `tailwind.config.js`.
