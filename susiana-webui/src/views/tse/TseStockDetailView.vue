@@ -5,6 +5,7 @@ import StockDetailDashboard from '@/components/StockDetailDashboard.vue'
 import { mockStockDetail, type StockDetailMock } from '@/mocks/market'
 import { findStockBySymbol } from '@/api/stocks'
 import { Button } from '@/components/ui/button'
+import { isMarketSyncEvent, useMarketLive } from '@/lib/market-live'
 
 const route = useRoute()
 const symbol = computed(() => String(route.params.symbol ?? ''))
@@ -12,6 +13,7 @@ const detail = ref<StockDetailMock>(mockStockDetail(symbol.value))
 const source = ref<'api' | 'mock'>('mock')
 const loading = ref(false)
 const error = ref<string | null>(null)
+const { onMarketEvent } = useMarketLive()
 
 async function load() {
   loading.value = true
@@ -68,6 +70,10 @@ async function load() {
 
 onMounted(load)
 watch(symbol, load)
+
+onMarketEvent((event) => {
+  if (isMarketSyncEvent(event)) void load()
+})
 </script>
 
 <template>

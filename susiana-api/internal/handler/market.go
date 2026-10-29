@@ -6,17 +6,19 @@ import (
 	"strconv"
 
 	"github.com/ArminDashti/susiana-api/internal/domain"
+	"github.com/ArminDashti/susiana-api/internal/realtime"
 	"github.com/ArminDashti/susiana-api/internal/repository"
 	"github.com/ArminDashti/susiana-api/internal/service"
 	"github.com/gin-gonic/gin"
 )
 
 type MarketHandler struct {
-	svc *service.MarketService
+	svc    *service.MarketService
+	events *realtime.Hub
 }
 
-func NewMarketHandler(svc *service.MarketService) *MarketHandler {
-	return &MarketHandler{svc: svc}
+func NewMarketHandler(svc *service.MarketService, events *realtime.Hub) *MarketHandler {
+	return &MarketHandler{svc: svc, events: events}
 }
 
 func (h *MarketHandler) Register(r *gin.Engine) {
@@ -30,6 +32,7 @@ func (h *MarketHandler) Register(r *gin.Engine) {
 		v1.GET("/etfs/:isin", h.GetETF)
 		v1.POST("/sync", h.Sync)
 		v1.GET("/sync/runs", h.ListSyncRuns)
+		v1.GET("/events", h.Events)
 	}
 }
 

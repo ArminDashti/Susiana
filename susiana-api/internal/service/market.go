@@ -26,11 +26,16 @@ type SyncRunStore interface {
 	ListRecent(ctx context.Context, limit int) ([]domain.SyncRun, error)
 }
 
+type SyncEventPublisher interface {
+	PublishSyncCompleted(instrumentType domain.InstrumentType, status domain.SyncStatus, fetched int, errMsg string)
+}
+
 type MarketService struct {
 	provider domain.MarketDataProvider
 	stocks   StockStore
 	etfs     ETFStore
 	syncRuns SyncRunStore
+	events   SyncEventPublisher
 }
 
 func NewMarketService(
@@ -45,6 +50,10 @@ func NewMarketService(
 		etfs:     etfs,
 		syncRuns: syncRuns,
 	}
+}
+
+func (s *MarketService) SetEventPublisher(p SyncEventPublisher) {
+	s.events = p
 }
 
 type SyncResult struct {
@@ -97,6 +106,9 @@ func (s *MarketService) Sync(ctx context.Context, instrumentType domain.Instrume
 	run.Error = errMsg
 
 	result := &SyncResult{Run: run, FetchedCount: fetched}
+	if s.events != nil {
+		s.events.PublishSyncCompleted(instrumentType, status, fetched, errMsg)
+	}
 	if syncErr != nil {
 		return result, syncErr
 	}

@@ -55,6 +55,7 @@ Health check: `GET http://localhost:8080/health`
 | `GET` | `/api/v1/etfs/:isin` | Get ETF by ISIN |
 | `POST` | `/api/v1/sync?type=stock\|etf\|all` | Trigger sync |
 | `GET` | `/api/v1/sync/runs` | Recent sync runs |
+| `GET` | `/api/v1/events` | Server-Sent Events stream (sync + keepalive ping) |
 
 Errors use `{ "error": "..." }`.
 

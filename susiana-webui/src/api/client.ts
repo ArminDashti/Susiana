@@ -5,10 +5,23 @@ export type ListResponse<T> = {
   total: number
 }
 
-const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+const API_BASE_KEY = 'susiana_api_base'
+
+function readApiBase(): string {
+  const stored =
+    typeof localStorage !== 'undefined' ? localStorage.getItem(API_BASE_KEY)?.trim() : ''
+  const env = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, '') ?? ''
+  return (stored || env).replace(/\/$/, '')
+}
+
+export function apiPath(path: string): string {
+  if (path.startsWith('http')) return path
+  const base = readApiBase()
+  return `${base}${path}`
+}
 
 export async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
-  const url = path.startsWith('http') ? path : `${API_BASE}${path}`
+  const url = apiPath(path)
   const res = await fetch(url, {
     ...init,
     headers: {

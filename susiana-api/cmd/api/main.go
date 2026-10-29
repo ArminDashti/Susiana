@@ -13,6 +13,7 @@ import (
 	"github.com/ArminDashti/susiana-api/internal/database"
 	"github.com/ArminDashti/susiana-api/internal/handler"
 	"github.com/ArminDashti/susiana-api/internal/provider"
+	"github.com/ArminDashti/susiana-api/internal/realtime"
 	"github.com/ArminDashti/susiana-api/internal/repository"
 	"github.com/ArminDashti/susiana-api/internal/scheduler"
 	"github.com/ArminDashti/susiana-api/internal/service"
@@ -46,7 +47,9 @@ func main() {
 	stockRepo := repository.NewStockRepository(pool)
 	etfRepo := repository.NewETFRepository(pool)
 	syncRepo := repository.NewSyncRunRepository(pool)
+	eventHub := realtime.NewHub()
 	marketSvc := service.NewMarketService(marketProvider, stockRepo, etfRepo, syncRepo)
+	marketSvc.SetEventPublisher(eventHub)
 
 	sched, err := scheduler.Start(cfg.SyncInterval, marketSvc)
 	if err != nil {
@@ -56,7 +59,7 @@ func main() {
 
 	r := gin.New()
 	r.Use(gin.Logger(), gin.Recovery())
-	handler.NewMarketHandler(marketSvc).Register(r)
+	handler.NewMarketHandler(marketSvc, eventHub).Register(r)
 
 	srv := &http.Server{
 		Addr:              ":" + cfg.HTTPPort,

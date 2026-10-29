@@ -6,13 +6,15 @@ import { TSE_LIST_COLUMNS } from '@/mocks/columns'
 import type { MarketRow } from '@/mocks/columns'
 import { mockTseStocks } from '@/mocks/market'
 import { listStocks } from '@/api/stocks'
+import { isMarketSyncEvent, useMarketLive } from '@/lib/market-live'
 
 const rows = ref<MarketRow[]>([...mockTseStocks])
 const loading = ref(false)
 const error = ref<string | null>(null)
 const router = useRouter()
+const { onMarketEvent } = useMarketLive()
 
-onMounted(async () => {
+async function loadStocks() {
   loading.value = true
   error.value = null
   try {
@@ -36,6 +38,12 @@ onMounted(async () => {
   } finally {
     loading.value = false
   }
+}
+
+onMounted(loadStocks)
+
+onMarketEvent((event) => {
+  if (isMarketSyncEvent(event)) void loadStocks()
 })
 
 function onRowClick(row: MarketRow) {

@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import GlobalSearch, { type SearchItem } from '@/components/GlobalSearch.vue'
 import SettingsModal from '@/components/SettingsModal.vue'
 import SidebarNavItems from '@/components/SidebarNavItems.vue'
+import { useMarketLive } from '@/lib/market-live'
 
 const SIDEBAR_COLLAPSED_KEY = 'susiana.sidebar.collapsed'
 
@@ -91,6 +92,8 @@ const sidebarCollapsed = ref(localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === 'tr
 // Open state per nav node, keyed by group label or nav item key. Unset means "open when it holds the active page".
 const openNodes = ref<Record<string, boolean>>({})
 const settingsOpen = ref(false)
+
+const { connected: apiLive } = useMarketLive()
 
 function openSettings() {
   settingsOpen.value = true
@@ -253,7 +256,20 @@ watch(
     </aside>
     <main class="min-w-0 flex-1 overflow-auto">
       <header class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
-        <h1 class="min-w-0 truncate text-base font-semibold">{{ route.meta.title ?? 'Susiana' }}</h1>
+        <div class="flex min-w-0 items-center gap-3">
+          <h1 class="truncate text-base font-semibold">{{ route.meta.title ?? 'Susiana' }}</h1>
+          <span
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium"
+            :class="apiLive ? 'border-emerald-500/40 text-emerald-600' : 'border-muted-foreground/30 text-muted-foreground'"
+            :title="apiLive ? 'Live link to API' : 'API stream disconnected'"
+          >
+            <span
+              class="h-1.5 w-1.5 rounded-full"
+              :class="apiLive ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/50'"
+            />
+            {{ apiLive ? 'Live' : 'Offline' }}
+          </span>
+        </div>
         <GlobalSearch :items="searchItems" />
       </header>
       <div class="p-6">
