@@ -142,3 +142,11 @@ unverified) or skip it. This keeps confident guesses out.
 - The webui sidebar menu is defined in `susiana-webui/src/components/AppShell.vue`, and routes are defined in `susiana-webui/src/router/index.ts`.
 - Containers of this app under an older compose project (e.g. `susiana-api`, `susiana-webui`, or a manual `docker compose up`) are removed by `susiana-cli/index.js` (`legacyContainers`) before `up`, so the container names can be recreated under the `susiana` project.
 - The webui font is Inter: `@fontsource/inter` is imported in `susiana-webui/src/assets/index.css`, and `font-sans` maps to Inter in `tailwind.config.js`.
+
+## Git workflow (required)
+
+After any change, always:
+1. Commit the change on a new branch and push it to GitHub (`origin`).
+2. Create a pull request for it.
+3. Merge the pull request into the `main` branch.
+4. Make sure everything is committed and pushed to GitHub, and that local `main` is pulled and in sync with `origin/main`.
