@@ -5,7 +5,7 @@ Vue 3 + Vite + Tailwind + shadcn-style UI for Susiana market dashboards (TSE, co
 ## Stack
 
 - Vue 3 + TypeScript + Vue Router
-- Tailwind CSS + Inter
+- Tailwind CSS + IBM Plex Sans / Mono
 - PWA via `vite-plugin-pwa` (Workbox)
 
 ## Setup

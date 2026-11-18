@@ -90,14 +90,14 @@ function headerLabel(col: GridColumn): string {
 
 <template>
   <div class="space-y-3">
-    <div v-if="searchable" class="flex items-center gap-2">
+    <div v-if="searchable" class="flex flex-wrap items-center gap-2">
       <input
         v-model="query"
         type="search"
         placeholder="Filter rows…"
-        class="h-9 w-full max-w-sm rounded-md border border-input bg-background px-3 text-sm outline-none ring-offset-background focus-visible:ring-2 focus-visible:ring-ring"
+        class="s-field h-9 max-w-sm text-sm"
       />
-      <span class="text-xs text-muted-foreground">{{ filtered.length }} rows</span>
+      <span class="font-mono text-xs text-muted-foreground">{{ filtered.length }} rows</span>
     </div>
 
     <p v-if="error" class="rounded-md border border-ask/40 bg-ask/10 px-3 py-2 text-sm text-ask">
@@ -105,14 +105,14 @@ function headerLabel(col: GridColumn): string {
     </p>
     <p v-else-if="loading" class="text-sm text-muted-foreground">Loading…</p>
 
-    <div class="overflow-auto rounded-md border">
-      <table class="w-full min-w-[640px] border-collapse text-sm">
-        <thead class="bg-muted/60">
+    <div class="s-panel overflow-auto">
+      <table class="s-data-table w-full min-w-[640px] border-collapse text-sm">
+        <thead>
           <tr>
             <th
               v-for="col in columns"
               :key="col.key"
-              class="cursor-pointer select-none whitespace-nowrap border-b px-3 py-2 font-medium text-muted-foreground"
+              class="cursor-pointer select-none whitespace-nowrap px-3 py-2.5"
               :class="{
                 'text-left': (col.align ?? 'left') === 'left',
                 'text-right': col.align === 'right' || col.format === 'number' || col.format === 'compact' || col.format === 'pct',
@@ -129,7 +129,7 @@ function headerLabel(col: GridColumn): string {
           <tr
             v-for="(row, idx) in filtered"
             :key="String(cellValue(row, rowKey) ?? idx)"
-            class="border-b last:border-0 hover:bg-accent/50 cursor-pointer"
+            class="cursor-pointer"
             @click="emit('rowClick', row)"
           >
             <td

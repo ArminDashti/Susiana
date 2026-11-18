@@ -16,7 +16,7 @@ defineProps<{
     <RouterLink
       v-if="item.to"
       :to="item.to"
-      class="mb-0.5 flex items-center gap-2 rounded-md px-2 py-1.5 text-sm transition-colors"
+      class="text-sm"
       :class="linkClass(item.to)"
     >
       <component :is="item.icon" v-if="item.icon" class="h-4 w-4 shrink-0" />

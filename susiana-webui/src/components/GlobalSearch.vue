@@ -89,7 +89,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalShortcut))
       aria-autocomplete="list"
       :aria-expanded="isOpen"
       placeholder="Search pages... (Ctrl+K)"
-      class="h-9 w-full rounded-md border bg-background pl-8 pr-3 text-sm outline-none focus:ring-2 focus:ring-primary/40"
+      class="s-field h-9 w-full pl-8 pr-3 text-sm"
       @focus="openResults"
       @input="activeIndex = 0; isOpen = true"
       @keydown="onKeydown"
@@ -97,7 +97,7 @@ onBeforeUnmount(() => window.removeEventListener('keydown', onGlobalShortcut))
     <ul
       v-if="isOpen"
       role="listbox"
-      class="absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto rounded-md border bg-card py-1 shadow-md"
+      class="s-panel absolute left-0 right-0 top-full z-20 mt-1 max-h-80 overflow-y-auto py-1 shadow-lg"
     >
       <li v-if="results.length === 0" class="px-3 py-2 text-sm text-muted-foreground">
         No pages found
