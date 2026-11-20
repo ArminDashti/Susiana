@@ -137,7 +137,7 @@ function toggleSidebar() {
 }
 
 function linkClass(to: string): string {
-  return isActive(to) ? 'bg-primary/10 font-medium text-primary' : 'text-foreground/80 hover:bg-accent'
+  return isActive(to) ? 's-nav-link-active' : 's-nav-link'
 }
 
 // Marks every folder on the path to the active page as open, so the current page is always visible.
@@ -168,13 +168,16 @@ watch(
 <template>
   <div class="flex h-full min-h-0">
     <aside
-      class="flex shrink-0 flex-col border-r bg-card transition-[width] duration-200"
-      :class="sidebarCollapsed ? 'w-14' : 'w-60'"
+      class="flex shrink-0 flex-col border-r border-border/80 bg-sidebar text-sidebar-foreground transition-[width] duration-200"
+      :class="sidebarCollapsed ? 'w-14' : 'w-[15.5rem]'"
     >
-      <div class="flex items-center gap-2 border-b px-3 py-4">
+      <div class="flex items-center gap-3 border-b border-border/70 px-3 py-4">
+        <span v-if="!sidebarCollapsed" class="s-brand-mark" aria-hidden="true" />
         <div v-if="!sidebarCollapsed" class="min-w-0 flex-1">
-          <RouterLink to="/dashboard" class="text-lg font-semibold tracking-tight">Susiana</RouterLink>
-          <p class="text-xs text-muted-foreground">Market command center</p>
+          <RouterLink to="/dashboard" class="block text-[1.05rem] font-semibold tracking-tight">
+            Susiana
+          </RouterLink>
+          <p class="text-[13px] leading-snug text-muted-foreground">Markets, indexes, and flow</p>
         </div>
         <Button
           variant="ghost"
@@ -201,8 +204,8 @@ watch(
               :to="item.to"
               :title="item.label"
               :aria-label="item.label"
-              class="mb-0.5 flex items-center justify-center rounded-md p-2 transition-colors"
-              :class="linkClass(item.to)"
+              class="mb-0.5 flex items-center justify-center rounded-md p-2"
+              :class="isActive(item.to) ? 'bg-primary/12 text-primary' : 'text-sidebar-foreground/80 hover:bg-foreground/5'"
             >
               <component :is="item.icon" v-if="item.icon" class="h-4 w-4 shrink-0" />
             </RouterLink>
@@ -214,7 +217,7 @@ watch(
           <div v-for="group in groups" :key="group.label" class="mb-1">
             <button
               type="button"
-              class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-[11px] font-semibold uppercase tracking-wide text-muted-foreground hover:bg-accent"
+              class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-xs font-medium text-muted-foreground hover:bg-foreground/5"
               :aria-expanded="isOpen(group.label, group.items)"
               @click="toggleNode(group.label, group.items)"
             >
@@ -224,7 +227,7 @@ watch(
                 :class="isOpen(group.label, group.items) ? '' : '-rotate-90'"
               />
             </button>
-            <div v-show="isOpen(group.label, group.items)" class="ml-3 mt-0.5 border-l pl-2">
+            <div v-show="isOpen(group.label, group.items)" class="ml-2 mt-0.5 border-l border-primary/25 pl-2">
               <SidebarNavItems
                 :items="group.items"
                 :is-open="isOpen"
@@ -254,25 +257,27 @@ watch(
         </div>
       </div>
     </aside>
-    <main class="min-w-0 flex-1 overflow-auto">
-      <header class="sticky top-0 z-10 flex items-center justify-between gap-4 border-b bg-background/90 px-6 py-3 backdrop-blur">
+    <main class="s-app-bg min-w-0 flex-1 overflow-auto">
+      <header
+        class="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-3 border-b border-border/80 bg-background/85 px-5 py-3 backdrop-blur-md sm:px-7"
+      >
         <div class="flex min-w-0 items-center gap-3">
-          <h1 class="truncate text-base font-semibold">{{ route.meta.title ?? 'Susiana' }}</h1>
+          <h1 class="truncate text-lg font-semibold tracking-tight">{{ route.meta.title ?? 'Susiana' }}</h1>
           <span
-            class="inline-flex shrink-0 items-center gap-1.5 rounded-full border px-2 py-0.5 text-[11px] font-medium"
-            :class="apiLive ? 'border-emerald-500/40 text-emerald-600' : 'border-muted-foreground/30 text-muted-foreground'"
+            class="inline-flex shrink-0 items-center gap-1.5 rounded-md border px-2 py-0.5 font-mono text-[11px]"
+            :class="apiLive ? 'border-bid/35 text-bid' : 'border-border text-muted-foreground'"
             :title="apiLive ? 'Live link to API' : 'API stream disconnected'"
           >
             <span
               class="h-1.5 w-1.5 rounded-full"
-              :class="apiLive ? 'bg-emerald-500 animate-pulse' : 'bg-muted-foreground/50'"
+              :class="apiLive ? 'bg-bid motion-safe:animate-pulse' : 'bg-muted-foreground/45'"
             />
             {{ apiLive ? 'Live' : 'Offline' }}
           </span>
         </div>
         <GlobalSearch :items="searchItems" />
       </header>
-      <div class="p-6">
+      <div class="mx-auto max-w-[88rem] px-5 py-6 sm:px-7 sm:py-8">
         <slot />
       </div>
     </main>
