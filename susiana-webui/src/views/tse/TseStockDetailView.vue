@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { isMarketSyncEvent, useMarketLive } from '@/lib/market-live'
 
 const route = useRoute()
-const symbol = computed(() => String(route.params.symbol ?? ''))
+const symbol = computed(() => String(route.params.instrument ?? ''))
 const detail = ref<StockDetailMock>(mockStockDetail(symbol.value))
 const source = ref<'api' | 'mock'>('mock')
 const loading = ref(false)
@@ -79,11 +79,11 @@ onMarketEvent((event) => {
 <template>
   <div class="space-y-3">
     <div class="flex flex-wrap items-center gap-2 text-sm">
-      <RouterLink class="text-primary hover:underline" to="/stock-market/asia/iran/board">← TSE list</RouterLink>
+      <RouterLink class="text-primary hover:underline" to="/stock-market/iran">← TSE list</RouterLink>
       <span class="text-muted-foreground">·</span>
       <RouterLink
         class="text-primary hover:underline"
-        :to="`/stock-market/tse/stock/history/${encodeURIComponent(symbol)}`"
+        :to="`/stock-market/iran/${encodeURIComponent(symbol)}/history`"
       >
         History
       </RouterLink>

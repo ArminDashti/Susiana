@@ -1,7 +1,6 @@
-import { createRouter, createWebHistory, type RouteMeta, type RouteRecordRaw } from 'vue-router'
-import type { Component } from 'vue'
+import { createRouter, createWebHistory, useRoute, type RouteLocationNormalized } from 'vue-router'
+import { defineComponent, h, type Component } from 'vue'
 import { getToken } from '@/lib/auth'
-import { STOCK_MARKET_REGIONS, STOCK_MARKET_SECTIONS, stockMarketPath } from '@/lib/stock-market'
 import AppLayout from '@/views/AppLayout.vue'
 import LoginView from '@/views/LoginView.vue'
 import DashboardView from '@/views/DashboardView.vue'
@@ -10,31 +9,33 @@ import StockMarketPlaceholderView from '@/views/stock-market/StockMarketPlacehol
 import TseStocksView from '@/views/tse/TseStocksView.vue'
 import TseStockDetailView from '@/views/tse/TseStockDetailView.vue'
 
-// Stock market pages with real content. Every other region / country / section uses the placeholder view.
-const STOCK_MARKET_PAGES: Record<string, { component: Component; meta: RouteMeta }> = {
-  [stockMarketPath('Asia', 'Iran', 'board')]: {
-    component: TseStocksView,
-    meta: { title: 'Stock market / Asia / Iran / Board' },
-  },
-  [stockMarketPath('Asia', 'Iran', 'index')]: {
-    component: MarketGridView,
-    meta: { title: 'Stock market / Asia / Iran / Index', gridKind: 'tse-indexes' },
-  },
+function iranOrPlaceholder(live: Component) {
+  return defineComponent({
+    name: 'IranOrPlaceholder',
+    setup() {
+      const route = useRoute()
+      return () => (String(route.params.country) === 'iran' ? h(live) : h(StockMarketPlaceholderView))
+    },
+  })
 }
 
-const stockMarketRoutes: RouteRecordRaw[] = STOCK_MARKET_REGIONS.flatMap((region) =>
-  region.countries.flatMap((country) =>
-    STOCK_MARKET_SECTIONS.map((section) => {
-      const path = stockMarketPath(region.label, country, section.slug)
-      const page = STOCK_MARKET_PAGES[path]
-      return {
-        path: path.slice(1),
-        component: page?.component ?? StockMarketPlaceholderView,
-        meta: page?.meta ?? { title: `Stock market / ${region.label} / ${country} / ${section.label}` },
-      }
-    }),
-  ),
-)
+function countryLabel(to: RouteLocationNormalized): string {
+  return String(to.params.country ?? '')
+    .split('-')
+    .map((part) => (part ? part[0].toUpperCase() + part.slice(1) : part))
+    .join(' ')
+}
+
+function titled(kind: 'country' | 'index' | 'instrument' | 'history') {
+  return (to: RouteLocationNormalized) => {
+    const country = countryLabel(to)
+    const instrument = String(to.params.instrument ?? '')
+    if (kind === 'country') to.meta.title = `Stock market / ${country}`
+    else if (kind === 'index') to.meta.title = `Stock market / ${country} / Index`
+    else if (kind === 'history') to.meta.title = `Stock market / ${country} / ${instrument} / History`
+    else to.meta.title = `Stock market / ${country} / ${instrument}`
+  }
+}
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
@@ -52,22 +53,52 @@ const router = createRouter({
       children: [
         { path: '', redirect: '/dashboard' },
         { path: 'dashboard', name: 'dashboard', component: DashboardView, meta: { title: 'Dashboard' } },
-        // Old TSE list URLs now live under Stock market / Asia / Iran
-        { path: 'stock-market/tse', redirect: stockMarketPath('Asia', 'Iran', 'board') },
-        { path: 'stock-market/tse/indexes', redirect: stockMarketPath('Asia', 'Iran', 'index') },
+        { path: 'stock-market/tse', redirect: '/stock-market/iran' },
+        { path: 'stock-market/tse/indexes', redirect: '/stock-market/iran/index' },
         {
           path: 'stock-market/tse/stock/history/:symbol',
-          name: 'tse-stock-history',
-          component: MarketGridView,
-          meta: { title: 'TSE stock history', gridKind: 'history' },
+          redirect: (to) => `/stock-market/iran/${encodeURIComponent(String(to.params.symbol))}/history`,
         },
         {
           path: 'stock-market/tse/stock/:symbol',
-          name: 'tse-stock',
-          component: TseStockDetailView,
-          meta: { title: 'TSE stock' },
+          redirect: (to) => `/stock-market/iran/${encodeURIComponent(String(to.params.symbol))}`,
         },
-        ...stockMarketRoutes,
+        {
+          path: 'stock-market/:region/:country/overview',
+          redirect: (to) => `/stock-market/${String(to.params.country)}`,
+        },
+        {
+          path: 'stock-market/:region/:country/board',
+          redirect: (to) => `/stock-market/${String(to.params.country)}`,
+        },
+        {
+          path: 'stock-market/:region/:country/index',
+          redirect: (to) => `/stock-market/${String(to.params.country)}/index`,
+        },
+        {
+          path: 'stock-market/:country',
+          component: iranOrPlaceholder(TseStocksView),
+          beforeEnter: titled('country'),
+          meta: { title: 'Stock market' },
+        },
+        {
+          path: 'stock-market/:country/index',
+          component: iranOrPlaceholder(MarketGridView),
+          beforeEnter: titled('index'),
+          meta: { title: 'Stock market / Index', gridKind: 'tse-indexes' },
+        },
+        {
+          path: 'stock-market/:country/:instrument/history',
+          component: iranOrPlaceholder(MarketGridView),
+          beforeEnter: titled('history'),
+          meta: { title: 'Stock history', gridKind: 'history' },
+        },
+        {
+          path: 'stock-market/:country/:instrument',
+          component: iranOrPlaceholder(TseStockDetailView),
+          beforeEnter: titled('instrument'),
+          meta: { title: 'Stock' },
+        },
         {
           path: 'commodity/crude-oil',
           component: MarketGridView,

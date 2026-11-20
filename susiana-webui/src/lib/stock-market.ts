@@ -1,14 +1,5 @@
-import type { Component } from 'vue'
-import { ChartLine, PanelsTopLeft, Table } from 'lucide-vue-next'
+import { ChartLine } from 'lucide-vue-next'
 import { link, type NavItem } from '@/lib/navigation'
-
-export type StockMarketSection = { slug: string; label: string; icon: Component }
-
-export const STOCK_MARKET_SECTIONS: StockMarketSection[] = [
-  { slug: 'overview', label: 'Overview', icon: PanelsTopLeft },
-  { slug: 'board', label: 'Board', icon: Table },
-  { slug: 'index', label: 'Index', icon: ChartLine },
-]
 
 export const STOCK_MARKET_REGIONS: { label: string; countries: string[] }[] = [
   { label: 'Asia', countries: ['Iran', 'Japan', 'China', 'South Korea', 'India'] },
@@ -23,8 +14,12 @@ export function toSlug(value: string): string {
   return value.toLowerCase().replace(/\s+/g, '-')
 }
 
-export function stockMarketPath(region: string, country: string, section: string): string {
-  return `/stock-market/${toSlug(region)}/${toSlug(country)}/${section}`
+export function countryPath(country: string): string {
+  return `/stock-market/${toSlug(country)}`
+}
+
+export function countryIndexPath(country: string): string {
+  return `${countryPath(country)}/index`
 }
 
 export function buildStockMarketNav(): NavItem[] {
@@ -32,11 +27,10 @@ export function buildStockMarketNav(): NavItem[] {
     key: `stock-market/${toSlug(region.label)}`,
     label: region.label,
     children: region.countries.map((country) => ({
-      key: `stock-market/${toSlug(region.label)}/${toSlug(country)}`,
+      key: countryPath(country),
       label: country,
-      children: STOCK_MARKET_SECTIONS.map((section) =>
-        link(section.label, stockMarketPath(region.label, country, section.slug), section.icon),
-      ),
+      to: countryPath(country),
+      children: [link('Index', countryIndexPath(country), ChartLine)],
     })),
   }))
 }

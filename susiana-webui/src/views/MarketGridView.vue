@@ -23,7 +23,7 @@ const router = useRouter()
 
 const grid = computed(() => {
   const kind = String(route.meta.gridKind ?? '')
-  const key = String(route.meta.gridKey ?? route.params.symbol ?? '')
+  const key = String(route.meta.gridKey ?? route.params.instrument ?? '')
 
   let columns: GridColumn[] = INDEX_COLUMNS
   let rows: MarketRow[] = []
@@ -53,7 +53,7 @@ const grid = computed(() => {
       break
     case 'history':
       columns = HISTORY_COLUMNS
-      rows = mockHistory(String(route.params.symbol ?? ''))
+      rows = mockHistory(String(route.params.instrument ?? ''))
       rowKey = 'as_of'
       break
     default:
@@ -67,7 +67,7 @@ function onRowClick(row: MarketRow) {
   if (route.meta.gridKind === 'history') return
   const symbol = row.symbol ?? row.pair
   if (typeof symbol === 'string' && route.meta.gridKind === 'tse-indexes') {
-    router.push(`/stock-market/tse/stock/${symbol}`)
+    router.push(`/stock-market/iran/${encodeURIComponent(symbol)}`)
   }
 }
 </script>

@@ -48,7 +48,7 @@ onMarketEvent((event) => {
 
 function onRowClick(row: MarketRow) {
   const symbol = String(row.ticker ?? row.isin ?? '')
-  if (symbol) router.push(`/stock-market/tse/stock/${encodeURIComponent(symbol)}`)
+  if (symbol) router.push(`/stock-market/iran/${encodeURIComponent(symbol)}`)
 }
 </script>
 
@@ -56,7 +56,7 @@ function onRowClick(row: MarketRow) {
   <div class="space-y-3">
     <p class="text-sm text-muted-foreground">
       Click a row to open the stock dashboard. History:
-      <code class="rounded bg-muted px-1">/stock-market/tse/stock/history/&lt;symbol&gt;</code>
+      <code class="rounded bg-muted px-1">/stock-market/iran/&lt;symbol&gt;/history</code>
     </p>
     <DataGrid
       :columns="TSE_LIST_COLUMNS"
